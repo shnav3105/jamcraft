@@ -34,19 +34,25 @@ export default function Player({
 }) {
   const audioRef  = useRef(null)
   const canvasRef = useRef(null)
-  const [elapsed, setElapsed] = useState(0)
+  const [elapsed, setElapsed]   = useState(0)
   const [duration, setDuration] = useState(0)
-  const [volume, setVolume] = useState(80)
+  const [volume, setVolume]     = useState(80)
+  const prevIdxRef = useRef(-1)
 
   const track = queue[currentIdx] || null
 
-  // load new track
+  // load new track when currentIdx changes
   useEffect(() => {
     if (!track) return
+    if (prevIdxRef.current === currentIdx) return
+    prevIdxRef.current = currentIdx
+
     const audio = audioRef.current
     audio.src = track.streamUrl
     audio.load()
-    if (isPlaying) audio.play().catch(() => {})
+    if (isPlaying) {
+      audio.play().catch(() => {})
+    }
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d')
       ctx.imageSmoothingEnabled = false
@@ -54,19 +60,33 @@ export default function Player({
     }
   }, [currentIdx, track?.streamUrl])
 
-  // sync play/pause from room
+  // sync play/pause state from room
   useEffect(() => {
     const audio = audioRef.current
     if (!audio.src) return
-    if (isPlaying) audio.play().catch(() => {})
-    else audio.pause()
+    if (isPlaying) {
+      audio.play().catch(() => {})
+    } else {
+      audio.pause()
+    }
   }, [isPlaying])
 
-  // ws-seek event from App
+  // ws-seek event
   useEffect(() => {
     const handler = (e) => { audioRef.current.currentTime = e.detail }
     window.addEventListener('ws-seek', handler)
     return () => window.removeEventListener('ws-seek', handler)
+  }, [])
+
+  // when joining a room mid-song — sync to current time
+  useEffect(() => {
+    const handler = (e) => {
+      if (audioRef.current) {
+        audioRef.current.currentTime = e.detail
+      }
+    }
+    window.addEventListener('ws-room-sync', handler)
+    return () => window.removeEventListener('ws-room-sync', handler)
   }, [])
 
   const handleTimeUpdate = () => {
@@ -105,8 +125,12 @@ export default function Player({
           <canvas ref={canvasRef} width="22" height="22" />
         </div>
         <div className="track-info">
-          <div className="track-title">{track ? track.title.toUpperCase() : '[ NOTHING PLAYING ]'}</div>
-          <div className="track-artist">{track ? track.artist : 'ADD A YOUTUBE URL →'}</div>
+          <div className="track-title">
+            {track ? track.title.toUpperCase() : '[ NOTHING PLAYING ]'}
+          </div>
+          <div className="track-artist">
+            {track ? track.artist : 'SEARCH A SONG BELOW →'}
+          </div>
           <div className="progress-wrap" onClick={handleProgressClick}>
             <div className="progress-fill" style={{ width: pct + '%' }} />
           </div>
@@ -126,7 +150,9 @@ export default function Player({
           {isPlaying ? '⏸ PAUSE' : '▶ PLAY'}
         </button>
         <button className="btn" onClick={onNext}>▶▶</button>
-        <button className={`btn ${shuffle ? 'active' : ''}`} onClick={onShuffle}>⇄ SHUF</button>
+        <button className={`btn ${shuffle ? 'active' : ''}`} onClick={onShuffle}>
+          ⇄ SHUF
+        </button>
       </div>
 
       <div className="vol-row">

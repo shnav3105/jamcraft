@@ -4,6 +4,7 @@ const { execSync } = require('child_process');
 const cors = require('cors');
 const http = require('http');
 const fs = require('fs');
+const path = require('path');
 
 // Write cookies from base64 env variable
 if (process.env.YT_COOKIES_B64) {
@@ -15,22 +16,29 @@ if (process.env.YT_COOKIES_B64) {
 const NODE_PATH = process.execPath;
 const YTDLP = process.env.YTDLP_PATH || 'yt-dlp';
 const COOKIES = fs.existsSync('/tmp/cookies.txt') ? '--cookies /tmp/cookies.txt' : '';
-const JS_RUNTIME = `--js-runtimes "node:${NODE_PATH}" --remote-components ejs:github`;
+
+// Cache the EJS solver script locally so we don't download it every request
+const EJS_CACHE_DIR = '/tmp/yt-dlp-ejs';
+if (!fs.existsSync(EJS_CACHE_DIR)) fs.mkdirSync(EJS_CACHE_DIR, { recursive: true });
+const JS_RUNTIME = `--js-runtimes "node:${NODE_PATH}" --compat-options no-certifi`;
 
 console.log('Node path:', NODE_PATH);
 console.log('Cookies file exists:', fs.existsSync('/tmp/cookies.txt'));
 
-// Pre-warm yt-dlp — download challenge solver once at startup
+// Pre-warm once at startup — downloads & caches solver script
 console.log('Pre-warming yt-dlp...');
 try {
   execSync(
-    `${YTDLP} ${COOKIES} ${JS_RUNTIME} "ytsearch1:test" --print "%(id)s" --no-download`,
-    { timeout: 120000 }
+    `${YTDLP} ${COOKIES} --js-runtimes "node:${NODE_PATH}" --remote-components ejs:github "ytsearch1:test" --print "%(id)s" --no-download`,
+    { timeout: 120000, env: { ...process.env, HOME: '/tmp' } }
   );
   console.log('yt-dlp pre-warmed successfully');
 } catch (e) {
   console.log('yt-dlp pre-warm warning:', e.message.slice(0, 150));
 }
+
+// After pre-warm, use cached version — no more remote downloads
+const FINAL_JS = `--js-runtimes "node:${NODE_PATH}"`;
 
 const app = express();
 app.use(cors());
@@ -59,8 +67,8 @@ app.get('/audio', (req, res) => {
   const cleanUrl = url.split('&')[0];
   try {
     const streamUrl = execSync(
-      `${YTDLP} --no-check-certificates ${COOKIES} ${JS_RUNTIME} -f "bestaudio/best" --get-url "${cleanUrl}"`,
-      { timeout: 120000 }
+      `${YTDLP} --no-check-certificates ${COOKIES} ${FINAL_JS} -f "bestaudio/best" --get-url "${cleanUrl}"`,
+      { timeout: 120000, env: { ...process.env, HOME: '/tmp' } }
     ).toString().trim().split('\n')[0];
     res.json({ streamUrl });
   } catch (e) {
@@ -74,8 +82,8 @@ app.get('/info', (req, res) => {
   const cleanUrl = url.split('&')[0];
   try {
     const raw = execSync(
-      `${YTDLP} --no-check-certificates ${COOKIES} ${JS_RUNTIME} --print "%(title)s|||%(uploader)s|||%(duration)s" "${cleanUrl}"`,
-      { timeout: 120000 }
+      `${YTDLP} --no-check-certificates ${COOKIES} ${FINAL_JS} --print "%(title)s|||%(uploader)s|||%(duration)s" "${cleanUrl}"`,
+      { timeout: 120000, env: { ...process.env, HOME: '/tmp' } }
     ).toString().trim();
     const [title, uploader, duration] = raw.split('|||');
     const mins = Math.floor(Number(duration) / 60);
@@ -91,8 +99,8 @@ app.get('/search', (req, res) => {
   if (!q) return res.status(400).json({ error: 'No query' });
   try {
     const raw = execSync(
-      `${YTDLP} --no-check-certificates ${COOKIES} ${JS_RUNTIME} "ytsearch5:${q}" --print "%(id)s|||%(title)s|||%(uploader)s|||%(duration)s" --no-download`,
-      { timeout: 120000 }
+      `${YTDLP} --no-check-certificates ${COOKIES} ${FINAL_JS} "ytsearch5:${q}" --print "%(id)s|||%(title)s|||%(uploader)s|||%(duration)s" --no-download`,
+      { timeout: 120000, env: { ...process.env, HOME: '/tmp' } }
     ).toString().trim();
     const results = raw.split('\n').filter(Boolean).map(line => {
       const [id, title, uploader, duration] = line.split('|||');

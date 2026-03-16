@@ -43,6 +43,12 @@ export default function App() {
         setCurrentIdx(payload.currentIdx)
         setIsPlaying(payload.isPlaying)
         setPlayers(payload.players)
+        // sync to current time of the room
+        if (payload.currentTime > 0) {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('ws-room-sync', { detail: payload.currentTime }))
+          }, 1500)
+        }
       }
       if (type === 'PLAYER_JOINED') {
         setPlayers(payload.players)
