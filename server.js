@@ -4,6 +4,8 @@ const { execSync } = require('child_process');
 const cors = require('cors');
 const http = require('http');
 
+const YTDLP = process.env.YTDLP_PATH || 'yt-dlp';
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -31,7 +33,7 @@ app.get('/audio', (req, res) => {
   const cleanUrl = url.split('&')[0];
   try {
     const streamUrl = execSync(
-      `yt-dlp --no-check-certificates -f "bestaudio/best" --get-url "${cleanUrl}"`,
+      `${YTDLP} --no-check-certificates -f "bestaudio/best" --get-url "${cleanUrl}"`,
       { timeout: 60000 }
     ).toString().trim().split('\n')[0];
     res.json({ streamUrl });
@@ -46,7 +48,7 @@ app.get('/info', (req, res) => {
   const cleanUrl = url.split('&')[0];
   try {
     const raw = execSync(
-      `yt-dlp --no-check-certificates --print "%(title)s|||%(uploader)s|||%(duration)s" "${cleanUrl}"`,
+      `${YTDLP} --no-check-certificates --print "%(title)s|||%(uploader)s|||%(duration)s" "${cleanUrl}"`,
       { timeout: 60000 }
     ).toString().trim();
     const [title, uploader, duration] = raw.split('|||');
@@ -64,7 +66,7 @@ app.get('/search', (req, res) => {
   if (!q) return res.status(400).json({ error: 'No query' });
   try {
     const raw = execSync(
-      `yt-dlp --no-check-certificates "ytsearch5:${q}" --print "%(id)s|||%(title)s|||%(uploader)s|||%(duration)s" --no-download`,
+      `${YTDLP} --no-check-certificates "ytsearch5:${q}" --print "%(id)s|||%(title)s|||%(uploader)s|||%(duration)s" --no-download`,
       { timeout: 60000 }
     ).toString().trim();
     const results = raw.split('\n').filter(Boolean).map(line => {

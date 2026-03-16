@@ -2,8 +2,10 @@ services:
   - type: web
     name: jamcraft-backend
     runtime: node
-    buildCommand: npm install && pip3 install yt-dlp
+    buildCommand: npm install && pip3 install yt-dlp --break-system-packages
     startCommand: node server.js
     envVars:
       - key: NODE_VERSION
         value: 18
+      - key: PATH
+        value: /usr/local/bin:/usr/bin:/bin:/home/render/.local/bin
