@@ -1,0 +1,32 @@
+.jamroom { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+
+.room-title { font-size: 9px; color: var(--accent); text-shadow: 2px 2px 0 #6b5200; margin-bottom: 4px; }
+
+.full { width: 100%; }
+
+.room-or { font-size: 7px; color: var(--muted); text-align: center; }
+
+.join-row { display: flex; gap: 8px; }
+.join-input { flex: 1; letter-spacing: 4px; text-transform: uppercase; }
+
+.code-display {
+  background: var(--bg);
+  border: 2px solid var(--accent);
+  padding: 14px;
+  font-size: 18px; color: var(--accent);
+  letter-spacing: 8px; text-align: center;
+  cursor: pointer; transition: background 0.1s;
+}
+.code-display:hover { background: rgba(255,204,0,0.05); }
+
+.code-hint { font-size: 7px; color: var(--muted); text-align: center; }
+
+.players-list { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.player-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg); border: 2px solid var(--border);
+  padding: 6px 10px; font-size: 7px;
+}
+.chip-dot { width: 6px; height: 6px; background: var(--green); flex-shrink: 0; }
+.player-chip.you .chip-dot { background: var(--accent); }

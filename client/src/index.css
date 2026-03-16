@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+:root {
+  --bg: #0e0e0e;
+  --surface: #1a1a1a;
+  --border: #2e2e2e;
+  --green: #5dff6e;
+  --green-dim: #1a3d1f;
+  --text: #e8e8e8;
+  --muted: #555;
+  --accent: #ffcc00;
+  --red: #ff4444;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  min-height: 100vh;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+input, button {
+  font-family: 'Press Start 2P', monospace;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); }
+
+.pixel-loader {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 16px;
+}
+.pixel-loader span {
+  width: 6px;
+  height: 6px;
+  background: var(--green);
+  display: inline-block;
+  animation: pixelbounce 0.6s steps(4) infinite;
+}
+.pixel-loader span:nth-child(2) { animation-delay: 0.15s; background: var(--accent); }
+.pixel-loader span:nth-child(3) { animation-delay: 0.3s;  background: var(--green); }
+
+@keyframes pixelbounce {
+  0%, 100% { transform: translateY(0px);  }
+  50%       { transform: translateY(-8px); }
+}
