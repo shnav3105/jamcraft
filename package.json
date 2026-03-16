@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node server.js"
   },
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "keywords": [],
   "author": "shnav3105",
   "license": "ISC",

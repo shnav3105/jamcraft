@@ -45,7 +45,7 @@ app.get('/audio', (req, res) => {
   try {
     const streamUrl = execSync(
       //audio
-      `${YTDLP} --no-check-certificates ${COOKIES} -f "bestaudio/best" --get-url "${cleanUrl}"`,
+      `${YTDLP} --no-check-certificates ${COOKIES} --extractor-args "youtube:player_client=web" -f "bestaudio/best" --get-url "${cleanUrl}"`,
       { timeout: 60000 }
     ).toString().trim().split('\n')[0];
     res.json({ streamUrl });
@@ -61,7 +61,7 @@ app.get('/info', (req, res) => {
   try {
     const raw = execSync(
       //info
-      `${YTDLP} --no-check-certificates ${COOKIES} --print "%(title)s|||%(uploader)s|||%(duration)s" "${cleanUrl}"`,
+      `${YTDLP} --no-check-certificates ${COOKIES} --extractor-args "youtube:player_client=web" --print "%(title)s|||%(uploader)s|||%(duration)s" "${cleanUrl}"`,
       { timeout: 60000 }
     ).toString().trim();
     const [title, uploader, duration] = raw.split('|||');
@@ -80,7 +80,7 @@ app.get('/search', (req, res) => {
   try {
     const raw = execSync(
       //search Route
-      `${YTDLP} --no-check-certificates ${COOKIES} "ytsearch5:${q}" --print "%(id)s|||%(title)s|||%(uploader)s|||%(duration)s" --no-download`,
+      `${YTDLP} --no-check-certificates ${COOKIES} --extractor-args "youtube:player_client=web" "ytsearch5:${q}" --print "%(id)s|||%(title)s|||%(uploader)s|||%(duration)s" --no-download`,
       { timeout: 60000 }
     ).toString().trim();
     const results = raw.split('\n').filter(Boolean).map(line => {
