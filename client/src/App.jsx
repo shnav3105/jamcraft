@@ -6,24 +6,23 @@ import Chat from './components/Chat'
 import './App.css'
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-const WS_URL  = BACKEND.replace('http', 'ws')
+const WS_URL  = BACKEND.replace('https', 'wss').replace('http', 'ws')
 
 export default function App() {
-  const [queue, setQueue]         = useState([])
+  const [queue, setQueue]           = useState([])
   const [currentIdx, setCurrentIdx] = useState(-1)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [roomCode, setRoomCode]   = useState(null)
-  const [players, setPlayers]     = useState(['YOU'])
-  const [messages, setMessages]   = useState([])
-  const [shuffle, setShuffle]     = useState(false)
-  const wsRef = useRef(null)
-  const nameRef = useRef('PLAYER-' + Math.random().toString(36).slice(2,5).toUpperCase())
+  const [isPlaying, setIsPlaying]   = useState(false)
+  const [roomCode, setRoomCode]     = useState(null)
+  const [players, setPlayers]       = useState(['YOU'])
+  const [messages, setMessages]     = useState([])
+  const [shuffle, setShuffle]       = useState(false)
+  const wsRef  = useRef(null)
+  const nameRef = useRef('PLAYER-' + Math.random().toString(36).slice(2, 5).toUpperCase())
 
   const addMsg = useCallback((who, text, system = false) => {
     setMessages(m => [...m, { who, text, system, id: Date.now() + Math.random() }])
   }, [])
 
-  // WebSocket setup
   const connectWS = useCallback((code) => {
     const socket = new WebSocket(WS_URL)
     wsRef.current = socket
@@ -43,7 +42,6 @@ export default function App() {
         setCurrentIdx(payload.currentIdx)
         setIsPlaying(payload.isPlaying)
         setPlayers(payload.players)
-        // sync to current time of the room
         if (payload.currentTime > 0) {
           setTimeout(() => {
             window.dispatchEvent(new CustomEvent('ws-room-sync', { detail: payload.currentTime }))
@@ -78,9 +76,8 @@ export default function App() {
     }
   }, [])
 
-  // Room actions
   const createRoom = () => {
-    const code = Math.random().toString(36).slice(2,8).toUpperCase()
+    const code = Math.random().toString(36).slice(2, 8).toUpperCase()
     setRoomCode(code)
     setPlayers([nameRef.current])
     connectWS(code)
@@ -100,7 +97,6 @@ export default function App() {
     setMessages([])
   }
 
-  // Player actions — always broadcast if in room
   const playTrack = (idx) => {
     setCurrentIdx(idx)
     setIsPlaying(true)
@@ -135,16 +131,16 @@ export default function App() {
   }
 
   const addSong = async (url) => {
-    addMsg('', 'FETCHING: ' + url.slice(0,30) + '...', true)
+    addMsg('', 'FETCHING: ' + url.slice(0, 30) + '...', true)
     try {
-      const [infoRes, audioRes] = await Promise.all([
-        fetch(`${BACKEND}/info?url=${encodeURIComponent(url)}`),
-        fetch(`${BACKEND}/audio?url=${encodeURIComponent(url)}`)
-      ])
-      const info  = await infoRes.json()
-      const audio = await audioRes.json()
-      if (audio.error) { addMsg('', 'ERROR: ' + audio.error, true); return }
-      const track = { ...info, streamUrl: audio.streamUrl, ytUrl: url }
+      const infoRes = await fetch(`${BACKEND}/info?url=${encodeURIComponent(url)}`)
+      const info = await infoRes.json()
+      if (info.error) { addMsg('', 'ERROR: ' + info.error, true); return }
+
+      // Use /stream proxy instead of direct YouTube URL — fixes CORS
+      const streamUrl = `${BACKEND}/stream?url=${encodeURIComponent(url)}`
+
+      const track = { ...info, streamUrl, ytUrl: url }
       setQueue(q => {
         const newQ = [...q, track]
         if (currentIdx === -1) setTimeout(() => playTrack(0), 100)

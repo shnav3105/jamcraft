@@ -4,7 +4,7 @@ const { execSync } = require('child_process');
 const cors = require('cors');
 const http = require('http');
 const fs = require('fs');
-const path = require('path');
+const https = require('https');
 
 // Write cookies from base64 env variable
 if (process.env.YT_COOKIES_B64) {
@@ -17,15 +17,10 @@ const NODE_PATH = process.execPath;
 const YTDLP = process.env.YTDLP_PATH || 'yt-dlp';
 const COOKIES = fs.existsSync('/tmp/cookies.txt') ? '--cookies /tmp/cookies.txt' : '';
 
-// Cache the EJS solver script locally so we don't download it every request
-const EJS_CACHE_DIR = '/tmp/yt-dlp-ejs';
-if (!fs.existsSync(EJS_CACHE_DIR)) fs.mkdirSync(EJS_CACHE_DIR, { recursive: true });
-const JS_RUNTIME = `--js-runtimes "node:${NODE_PATH}" --compat-options no-certifi`;
-
 console.log('Node path:', NODE_PATH);
 console.log('Cookies file exists:', fs.existsSync('/tmp/cookies.txt'));
 
-// Pre-warm once at startup — downloads & caches solver script
+// Pre-warm once at startup
 console.log('Pre-warming yt-dlp...');
 try {
   execSync(
@@ -37,7 +32,7 @@ try {
   console.log('yt-dlp pre-warm warning:', e.message.slice(0, 150));
 }
 
-// After pre-warm, use cached version — no more remote downloads
+// After pre-warm use cached solver — no more remote downloads
 const FINAL_JS = `--js-runtimes "node:${NODE_PATH}"`;
 
 const app = express();
@@ -61,21 +56,7 @@ function broadcastAll(roomCode, data) {
   broadcastToRoom(roomCode, data, null);
 }
 
-app.get('/audio', (req, res) => {
-  const { url } = req.query;
-  if (!url) return res.status(400).json({ error: 'No URL provided' });
-  const cleanUrl = url.split('&')[0];
-  try {
-    const streamUrl = execSync(
-      `${YTDLP} --no-check-certificates ${COOKIES} ${FINAL_JS} -f "bestaudio/best" --get-url "${cleanUrl}"`,
-      { timeout: 120000, env: { ...process.env, HOME: '/tmp' } }
-    ).toString().trim().split('\n')[0];
-    res.json({ streamUrl });
-  } catch (e) {
-    res.status(500).json({ error: 'yt-dlp failed', detail: e.message });
-  }
-});
-
+// GET /info?url=YOUTUBE_URL
 app.get('/info', (req, res) => {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: 'No URL provided' });
@@ -94,6 +75,7 @@ app.get('/info', (req, res) => {
   }
 });
 
+// GET /search?q=QUERY
 app.get('/search', (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'No query' });
@@ -117,6 +99,46 @@ app.get('/search', (req, res) => {
     res.json({ results });
   } catch (e) {
     res.status(500).json({ error: 'Search failed', detail: e.message });
+  }
+});
+
+// GET /stream?url=YOUTUBE_URL — proxies audio through backend
+app.get('/stream', (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).send('No URL');
+  const cleanUrl = url.split('&')[0];
+  try {
+    const streamUrl = execSync(
+      `${YTDLP} --no-check-certificates ${COOKIES} ${FINAL_JS} -f "bestaudio/best" --get-url "${cleanUrl}"`,
+      { timeout: 120000, env: { ...process.env, HOME: '/tmp' } }
+    ).toString().trim().split('\n')[0];
+
+    const range = req.headers.range || 'bytes=0-';
+    const client = streamUrl.startsWith('https') ? https : require('http');
+
+    const proxyReq = client.get(streamUrl, {
+      headers: {
+        'Range': range,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    }, (proxyRes) => {
+      res.writeHead(proxyRes.statusCode, {
+        'Content-Type': proxyRes.headers['content-type'] || 'audio/webm',
+        'Content-Length': proxyRes.headers['content-length'],
+        'Content-Range': proxyRes.headers['content-range'],
+        'Accept-Ranges': 'bytes',
+        'Access-Control-Allow-Origin': '*',
+      });
+      proxyRes.pipe(res);
+    });
+
+    proxyReq.on('error', (e) => {
+      console.error('Proxy error:', e.message);
+      res.status(500).send('Stream error');
+    });
+
+  } catch (e) {
+    res.status(500).send('Failed: ' + e.message);
   }
 });
 
