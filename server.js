@@ -16,7 +16,7 @@ if (process.env.YT_COOKIES_B64) {
 const NODE_PATH = process.execPath;
 const YTDLP = process.env.YTDLP_PATH || 'yt-dlp';
 const COOKIES = fs.existsSync('/tmp/cookies.txt') ? '--cookies /tmp/cookies.txt' : '';
-const JS_RUNTIME = `--js-runtimes "node:${NODE_PATH}"`;
+const JS_RUNTIME = `--js-runtimes "node:${NODE_PATH}" --remote-components ejs:github`;
 
 console.log('Node path:', NODE_PATH);
 console.log('Cookies file exists:', fs.existsSync('/tmp/cookies.txt'));
