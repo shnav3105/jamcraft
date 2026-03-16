@@ -4,7 +4,14 @@ const { execSync } = require('child_process');
 const cors = require('cors');
 const http = require('http');
 
+const fs = require('fs');
+if (process.env.YT_COOKIES) {
+  fs.writeFileSync('/tmp/cookies.txt', process.env.YT_COOKIES);
+  console.log('Cookies written from environment');
+}
+
 const YTDLP = process.env.YTDLP_PATH || 'yt-dlp';
+const COOKIES = '--cookies /tmp/cookies.txt';
 
 const app = express();
 app.use(cors());
@@ -33,7 +40,8 @@ app.get('/audio', (req, res) => {
   const cleanUrl = url.split('&')[0];
   try {
     const streamUrl = execSync(
-      `${YTDLP} --no-check-certificates -f "bestaudio/best" --get-url "${cleanUrl}"`,
+      //audio
+      `${YTDLP} --no-check-certificates ${COOKIES} -f "bestaudio/best" --get-url "${cleanUrl}"`,
       { timeout: 60000 }
     ).toString().trim().split('\n')[0];
     res.json({ streamUrl });
@@ -48,7 +56,8 @@ app.get('/info', (req, res) => {
   const cleanUrl = url.split('&')[0];
   try {
     const raw = execSync(
-      `${YTDLP} --no-check-certificates --print "%(title)s|||%(uploader)s|||%(duration)s" "${cleanUrl}"`,
+      //info
+      `${YTDLP} --no-check-certificates ${COOKIES} --print "%(title)s|||%(uploader)s|||%(duration)s" "${cleanUrl}"`,
       { timeout: 60000 }
     ).toString().trim();
     const [title, uploader, duration] = raw.split('|||');
@@ -66,7 +75,8 @@ app.get('/search', (req, res) => {
   if (!q) return res.status(400).json({ error: 'No query' });
   try {
     const raw = execSync(
-      `${YTDLP} --no-check-certificates "ytsearch5:${q}" --print "%(id)s|||%(title)s|||%(uploader)s|||%(duration)s" --no-download`,
+      //search Route
+      `${YTDLP} --no-check-certificates ${COOKIES} "ytsearch5:${q}" --print "%(id)s|||%(title)s|||%(uploader)s|||%(duration)s" --no-download`,
       { timeout: 60000 }
     ).toString().trim();
     const results = raw.split('\n').filter(Boolean).map(line => {
