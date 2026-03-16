@@ -1,19 +1,18 @@
 {
   "name": "jamcraft",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Minecraft-styled music jam room",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "shnav3105",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^5.2.1",
-    "node-fetch": "^3.3.2",
-    "socket.io-client": "^4.8.3",
     "ws": "^8.19.0"
   }
 }
