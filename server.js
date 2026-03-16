@@ -5,7 +5,11 @@ const cors = require('cors');
 const http = require('http');
 
 const fs = require('fs');
-if (process.env.YT_COOKIES) {
+if (process.env.YT_COOKIES_B64) {
+  const decoded = Buffer.from(process.env.YT_COOKIES_B64, 'base64').toString('utf8');
+  fs.writeFileSync('/tmp/cookies.txt', decoded);
+  console.log('Cookies written from base64');
+} else if (process.env.YT_COOKIES) {
   fs.writeFileSync('/tmp/cookies.txt', process.env.YT_COOKIES);
   console.log('Cookies written from environment');
 }
