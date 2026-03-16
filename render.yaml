@@ -2,8 +2,8 @@ services:
   - type: web
     name: jamcraft-backend
     runtime: node
-    buildCommand: npm install && pip3 install yt-dlp --break-system-packages && yt-dlp --update-to nightly
+    buildCommand: npm install && pip3 install yt-dlp --break-system-packages && yt-dlp --update-to nightly && node -e "console.log('Node path:', process.execPath)"
     startCommand: node server.js
     envVars:
       - key: NODE_VERSION
-        value: 18
+        value: 24

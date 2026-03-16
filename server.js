@@ -3,19 +3,23 @@ const { WebSocketServer } = require('ws');
 const { execSync } = require('child_process');
 const cors = require('cors');
 const http = require('http');
-
 const fs = require('fs');
+
+// Write cookies from base64 env variable
 if (process.env.YT_COOKIES_B64) {
   const decoded = Buffer.from(process.env.YT_COOKIES_B64, 'base64').toString('utf8');
   fs.writeFileSync('/tmp/cookies.txt', decoded);
-  console.log('Cookies written from base64');
-} else if (process.env.YT_COOKIES) {
-  fs.writeFileSync('/tmp/cookies.txt', process.env.YT_COOKIES);
-  console.log('Cookies written from environment');
+  console.log('Cookies written from base64 environment variable');
 }
 
+// Get node path and tell yt-dlp to use it
+const NODE_PATH = process.execPath;
 const YTDLP = process.env.YTDLP_PATH || 'yt-dlp';
-const COOKIES = '--cookies /tmp/cookies.txt';
+const COOKIES = fs.existsSync('/tmp/cookies.txt') ? '--cookies /tmp/cookies.txt' : '';
+const JS_RUNTIME = `--js-runtimes "nodejs:${NODE_PATH}"`;
+
+console.log('Node path:', NODE_PATH);
+console.log('Cookies file exists:', fs.existsSync('/tmp/cookies.txt'));
 
 const app = express();
 app.use(cors());
@@ -38,14 +42,14 @@ function broadcastAll(roomCode, data) {
   broadcastToRoom(roomCode, data, null);
 }
 
+// GET /audio?url=YOUTUBE_URL
 app.get('/audio', (req, res) => {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: 'No URL provided' });
   const cleanUrl = url.split('&')[0];
   try {
     const streamUrl = execSync(
-      //audio
-      `${YTDLP} --no-check-certificates ${COOKIES} --extractor-args "youtube:player_client=web" -f "bestaudio/best" --get-url "${cleanUrl}"`,
+      `${YTDLP} --no-check-certificates ${COOKIES} ${JS_RUNTIME} -f "bestaudio/best" --get-url "${cleanUrl}"`,
       { timeout: 60000 }
     ).toString().trim().split('\n')[0];
     res.json({ streamUrl });
@@ -54,14 +58,14 @@ app.get('/audio', (req, res) => {
   }
 });
 
+// GET /info?url=YOUTUBE_URL
 app.get('/info', (req, res) => {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: 'No URL provided' });
   const cleanUrl = url.split('&')[0];
   try {
     const raw = execSync(
-      //info
-      `${YTDLP} --no-check-certificates ${COOKIES} --extractor-args "youtube:player_client=web" --print "%(title)s|||%(uploader)s|||%(duration)s" "${cleanUrl}"`,
+      `${YTDLP} --no-check-certificates ${COOKIES} ${JS_RUNTIME} --print "%(title)s|||%(uploader)s|||%(duration)s" "${cleanUrl}"`,
       { timeout: 60000 }
     ).toString().trim();
     const [title, uploader, duration] = raw.split('|||');
@@ -73,14 +77,13 @@ app.get('/info', (req, res) => {
   }
 });
 
-// GET /search?q=QUERY — search YouTube
+// GET /search?q=QUERY
 app.get('/search', (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'No query' });
   try {
     const raw = execSync(
-      //search Route
-      `${YTDLP} --no-check-certificates ${COOKIES} --extractor-args "youtube:player_client=web" "ytsearch5:${q}" --print "%(id)s|||%(title)s|||%(uploader)s|||%(duration)s" --no-download`,
+      `${YTDLP} --no-check-certificates ${COOKIES} ${JS_RUNTIME} "ytsearch5:${q}" --print "%(id)s|||%(title)s|||%(uploader)s|||%(duration)s" --no-download`,
       { timeout: 60000 }
     ).toString().trim();
     const results = raw.split('\n').filter(Boolean).map(line => {
